@@ -3,7 +3,7 @@
   written by carson graf 
   don't email me, @ me on discord
 */
-
+// team number is 4842
 /*
   This is catastrophically poorly written code for the sake of being easy to follow
   If you know what the word "refactor" means, you should refactor this code
@@ -17,20 +17,28 @@ import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+
+import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 
 public class Robot extends TimedRobot {
   
   //Definitions for the hardware. Change this if you change what stuff you have plugged in
-  CANSparkMax driveLeftA = new CANSparkMax(1, MotorType.kBrushed);
-  CANSparkMax driveLeftB = new CANSparkMax(2, MotorType.kBrushed);
-  CANSparkMax driveRightA = new CANSparkMax(3, MotorType.kBrushed);
-  CANSparkMax driveRightB = new CANSparkMax(4, MotorType.kBrushed);
-  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushless);
-  VictorSPX intake = new VictorSPX(6);
+  CANSparkMax driveLeftFront = new CANSparkMax(1, MotorType.kBrushless);
+  CANSparkMax driveLeftBack = new CANSparkMax(2, MotorType.kBrushless);
+  CANSparkMax driveRightFront = new CANSparkMax(3, MotorType.kBrushless);
+  CANSparkMax driveRightBack = new CANSparkMax(4, MotorType.kBrushless);
+  /*
+    spark max controlled and updated through the REV hardware client
+    Victor SPX controlled and updated through the PHONEIX tuner 
+  */
+  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushless); // this motor controller has not been flashed
+  VictorSPX intake = new VictorSPX(6); // neither has this one
 
   Joystick driverController = new Joystick(0);
 
@@ -50,6 +58,18 @@ public class Robot extends TimedRobot {
   double autoStart = 0;
   boolean goForAuto = false;
 
+  //shuffleboard
+  ShuffleboardTab driveTab = Shuffleboard.getTab("Driver");
+  NetworkTableEntry autonEntry;
+  NetworkTableEntry driveLeftFrontReversed;
+  NetworkTableEntry driveLeftBackReversed;
+  NetworkTableEntry driveRightFrontReversed;
+  NetworkTableEntry driveRightBackReversed;
+
+  NetworkTableEntry leftSpeed;
+  NetworkTableEntry rightSpeed;
+
+
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -58,22 +78,53 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     //Configure motors to turn correct direction. You may have to invert some of your motors
-    driveLeftA.setInverted(true);
-    driveLeftA.burnFlash();
-    driveLeftB.setInverted(true);
-    driveLeftB.burnFlash();
-    driveRightA.setInverted(false);
-    driveRightA.burnFlash();
-    driveRightB.setInverted(false);
-    driveRightB.burnFlash();
     
     arm.setInverted(false);
     arm.setIdleMode(IdleMode.kBrake);
     arm.burnFlash();
 
     //add a thing on the dashboard to turn off auto if needed
-    SmartDashboard.putBoolean("Go For Auto", false);
-    goForAuto = SmartDashboard.getBoolean("Go For Auto", false);
+    autonEntry = driveTab.add("Auton?", false)
+    .withPosition(0, 0)
+    .withSize(1, 1)
+    .withWidget(BuiltInWidgets.kToggleButton)
+    .getEntry();
+    goForAuto = autonEntry.getBoolean(false); // set local variable
+
+    driveLeftFrontReversed = driveTab.add("driveLeftFrontReversed", false)
+    .withPosition(1, 0)
+    .withSize(2, 1)
+    .withWidget(BuiltInWidgets.kToggleButton)
+    .getEntry();
+
+    driveLeftBackReversed = driveTab.add("driveLeftBackReversed", false)
+    .withPosition(1, 1)
+    .withSize(2, 1)
+    .withWidget(BuiltInWidgets.kToggleButton)
+    .getEntry();
+
+    driveRightFrontReversed = driveTab.add("driveRightFrontReversed", false)
+    .withPosition(3, 0)
+    .withSize(2, 1)
+    .withWidget(BuiltInWidgets.kToggleButton)
+    .getEntry();
+
+    driveRightBackReversed = driveTab.add("driveRightBackReversed", false)
+    .withPosition(3, 1)
+    .withSize(2, 1)
+    .withWidget(BuiltInWidgets.kToggleButton)
+    .getEntry();
+
+    leftSpeed = driveTab.add("LeftSpeed", 0)
+    .withPosition(5, 0)
+    .withSize(1, 1)
+    .getEntry();
+
+    rightSpeed = driveTab.add("RightSpeed", 0)
+    .withPosition(5, 1)
+    .withSize(1, 1)
+    .getEntry();
+    
   }
 
   @Override
@@ -81,7 +132,7 @@ public class Robot extends TimedRobot {
     //get a time for auton start to do events based on time later
     autoStart = Timer.getFPGATimestamp();
     //check dashboard icon to ensure good to do auto
-    goForAuto = SmartDashboard.getBoolean("Go For Auto", false);
+    goForAuto = autonEntry.getBoolean(false);
   }
 
   /** This function is called periodically during autonomous. */
@@ -115,17 +166,17 @@ public class Robot extends TimedRobot {
       }else if(autoTimeElapsed < 6){
         //stop spitting out the ball and drive backwards *slowly* for three seconds
         intake.set(ControlMode.PercentOutput, 0);
-        driveLeftA.set(-0.3);
-        driveLeftB.set(-0.3);
-        driveRightA.set(-0.3);
-        driveRightB.set(-0.3);
+        driveLeftFront.set(-0.3);
+        driveLeftBack.set(-0.3);
+        driveRightFront.set(-0.3);
+        driveRightBack.set(-0.3);
       }else{
         //do nothing for the rest of auto
         intake.set(ControlMode.PercentOutput, 0);
-        driveLeftA.set(0);
-        driveLeftB.set(0);
-        driveRightA.set(0);
-        driveRightB.set(0);
+        driveLeftFront.set(0);
+        driveLeftBack.set(0);
+        driveRightFront.set(0);
+        driveRightBack.set(0);
       }
     }
   }
@@ -137,17 +188,23 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    //Set up arcade steer
-    double forward = -driverController.getRawAxis(1);
-    double turn = -driverController.getRawAxis(2);
+    //invert drivetrain from shuffleboard
+    driveLeftFront.setInverted(driveLeftFrontReversed.getBoolean(false));
+    driveLeftBack.setInverted(driveLeftBackReversed.getBoolean(false));
+    driveRightFront.setInverted(driveRightFrontReversed.getBoolean(false));
+    driveRightBack.setInverted(driveRightBackReversed.getBoolean(false));
     
-    double driveLeftPower = forward - turn;
-    double driveRightPower = forward + turn;
+    //Set up tank steer
+    double leftForward = -driverController.getRawAxis(2);
+    double rightForward = -driverController.getRawAxis(5);
 
-    driveLeftA.set(driveLeftPower);
-    driveLeftB.set(driveLeftPower);
-    driveRightA.set(driveRightPower);
-    driveRightB.set(driveRightPower);
+    leftSpeed.setDouble(leftForward);
+    rightSpeed.setDouble(rightForward);
+
+    driveLeftFront.set(leftForward);
+    driveLeftBack.set(leftForward);
+    driveRightFront.set(rightForward);
+    driveRightBack.set(rightForward);
 
     //Intake controls
     if(driverController.getRawButton(5)){
@@ -193,10 +250,10 @@ public class Robot extends TimedRobot {
   public void disabledInit() {
     //On disable turn off everything
     //done to solve issue with motors "remembering" previous setpoints after reenable
-    driveLeftA.set(0);
-    driveLeftB.set(0);
-    driveRightA.set(0);
-    driveRightB.set(0);
+    driveLeftFront.set(0);
+    driveLeftBack.set(0);
+    driveRightFront.set(0);
+    driveRightBack.set(0);
     arm.set(0);
     intake.set(ControlMode.PercentOutput, 0);
   }
