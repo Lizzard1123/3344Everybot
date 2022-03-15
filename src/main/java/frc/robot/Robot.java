@@ -18,6 +18,7 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
@@ -37,7 +38,7 @@ public class Robot extends TimedRobot {
     spark max controlled and updated through the REV hardware client
     Victor SPX controlled and updated through the PHONEIX tuner 
   */
-  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushless); // this motor controller has not been flashed
+  CANSparkMax arm = new CANSparkMax(5, MotorType.kBrushless);
   VictorSPX intake = new VictorSPX(6); // neither has this one
 
   Joystick driverController = new Joystick(0);
@@ -45,9 +46,9 @@ public class Robot extends TimedRobot {
   //Constants for controlling the arm. consider tuning these for your particular robot
   final double armHoldUp = 0.08;
   final double armHoldDown = 0.13;
-  final double armTravel = 0.5;
+  final double armTravel = 0.45;
 
-  final double armTimeUp = 0.5;
+  final double armTimeUp = 0.45;
   final double armTimeDown = 0.35;
 
   //Varibles needed for the code
@@ -195,8 +196,8 @@ public class Robot extends TimedRobot {
     driveRightBack.setInverted(driveRightBackReversed.getBoolean(false));
     
     //Set up tank steer
-    double leftForward = -driverController.getRawAxis(2);
-    double rightForward = -driverController.getRawAxis(5);
+    double leftForward = -MathUtil.applyDeadband(driverController.getRawAxis(1), .1);
+    double rightForward = MathUtil.applyDeadband(driverController.getRawAxis(5), .1);
 
     leftSpeed.setDouble(leftForward);
     rightSpeed.setDouble(rightForward);
@@ -207,10 +208,10 @@ public class Robot extends TimedRobot {
     driveRightBack.set(rightForward);
 
     //Intake controls
-    if(driverController.getRawButton(5)){
+    if(driverController.getRawButton(6)){
       intake.set(VictorSPXControlMode.PercentOutput, 1);;
     }
-    else if(driverController.getRawButton(7)){
+    else if(driverController.getRawButton(5)){
       intake.set(VictorSPXControlMode.PercentOutput, -1);
     }
     else{
@@ -235,11 +236,11 @@ public class Robot extends TimedRobot {
       }
     }
   
-    if(driverController.getRawButtonPressed(6) && !armUp){
+    if(driverController.getRawButtonPressed(4) && !armUp){
       lastBurstTime = Timer.getFPGATimestamp();
       armUp = true;
     }
-    else if(driverController.getRawButtonPressed(8) && armUp){
+    else if(driverController.getRawButtonPressed(1) && armUp){
       lastBurstTime = Timer.getFPGATimestamp();
       armUp = false;
     }  
