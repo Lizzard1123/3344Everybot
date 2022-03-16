@@ -196,8 +196,8 @@ public class Robot extends TimedRobot {
     driveRightBack.setInverted(driveRightBackReversed.getBoolean(false));
     
     //Set up tank steer
-    double leftForward = -MathUtil.applyDeadband(driverController.getRawAxis(1), .1);
-    double rightForward = MathUtil.applyDeadband(driverController.getRawAxis(5), .1);
+    double leftForward = -MathUtil.applyDeadband(driverController.getRawAxis(1), .1) * .5;
+    double rightForward = MathUtil.applyDeadband(driverController.getRawAxis(5), .1) * .5;
 
     leftSpeed.setDouble(leftForward);
     rightSpeed.setDouble(rightForward);
