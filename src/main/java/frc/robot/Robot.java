@@ -11,6 +11,8 @@
 
 package frc.robot;
 
+import java.util.Map;
+
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.VictorSPXControlMode;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
@@ -18,6 +20,8 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.Joystick;
@@ -62,13 +66,14 @@ public class Robot extends TimedRobot {
   //shuffleboard
   ShuffleboardTab driveTab = Shuffleboard.getTab("Driver");
   NetworkTableEntry autonEntry;
-  NetworkTableEntry driveLeftFrontReversed;
-  NetworkTableEntry driveLeftBackReversed;
-  NetworkTableEntry driveRightFrontReversed;
-  NetworkTableEntry driveRightBackReversed;
 
-  NetworkTableEntry leftSpeed;
-  NetworkTableEntry rightSpeed;
+  NetworkTableEntry leftSpeedEntry;
+  NetworkTableEntry rightSpeedEntry;
+  NetworkTableEntry maxTurnSpeed;
+  NetworkTableEntry maxDriveSpeed;
+
+  UsbCamera camera = CameraServer.startAutomaticCapture();
+  NetworkTableEntry cameraFeed;
 
 
 
@@ -78,6 +83,12 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    //invert drivetrain from shuffleboard
+    driveLeftFront.setInverted(false);
+    driveLeftBack.setInverted(false);
+    driveRightFront.setInverted(true);
+    driveRightBack.setInverted(true);
+
     //Configure motors to turn correct direction. You may have to invert some of your motors
     
     arm.setInverted(false);
@@ -92,39 +103,33 @@ public class Robot extends TimedRobot {
     .getEntry();
     goForAuto = autonEntry.getBoolean(false); // set local variable
 
-    driveLeftFrontReversed = driveTab.add("driveLeftFrontReversed", false)
-    .withPosition(1, 0)
-    .withSize(2, 1)
-    .withWidget(BuiltInWidgets.kToggleButton)
+    leftSpeedEntry = driveTab.add("leftSpeedEntry", 0)
+    .withPosition(0, 1)
+    .withSize(1, 1)
     .getEntry();
 
-    driveLeftBackReversed = driveTab.add("driveLeftBackReversed", false)
+    rightSpeedEntry = driveTab.add("rightSpeedEntry", 0)
+    .withPosition(0, 2)
+    .withSize(1, 1)
+    .getEntry();
+
+    maxTurnSpeed = driveTab.add("maxTurnSpeed", .5)
     .withPosition(1, 1)
     .withSize(2, 1)
-    .withWidget(BuiltInWidgets.kToggleButton)
+    .withWidget(BuiltInWidgets.kNumberSlider)
+    .withProperties(Map.of("Max", 1, "Min", 0))
     .getEntry();
 
-    driveRightFrontReversed = driveTab.add("driveRightFrontReversed", false)
-    .withPosition(3, 0)
-    .withSize(2, 1)
-    .withWidget(BuiltInWidgets.kToggleButton)
-    .getEntry();
-
-    driveRightBackReversed = driveTab.add("driveRightBackReversed", false)
+    maxDriveSpeed = driveTab.add("maxDriveSpeed", .5)
     .withPosition(3, 1)
     .withSize(2, 1)
-    .withWidget(BuiltInWidgets.kToggleButton)
+    .withWidget(BuiltInWidgets.kNumberSlider)
+    .withProperties(Map.of("Max", 1, "Min", 0))
     .getEntry();
 
-    leftSpeed = driveTab.add("LeftSpeed", 0)
+    driveTab.add(camera)
     .withPosition(5, 0)
-    .withSize(1, 1)
-    .getEntry();
-
-    rightSpeed = driveTab.add("RightSpeed", 0)
-    .withPosition(5, 1)
-    .withSize(1, 1)
-    .getEntry();
+    .withSize(4, 4);
     
   }
 
@@ -189,23 +194,30 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    //invert drivetrain from shuffleboard
-    driveLeftFront.setInverted(driveLeftFrontReversed.getBoolean(false));
-    driveLeftBack.setInverted(driveLeftBackReversed.getBoolean(false));
-    driveRightFront.setInverted(driveRightFrontReversed.getBoolean(false));
-    driveRightBack.setInverted(driveRightBackReversed.getBoolean(false));
     
-    //Set up tank steer
-    double leftForward = -MathUtil.applyDeadband(driverController.getRawAxis(1), .1) * .5;
-    double rightForward = MathUtil.applyDeadband(driverController.getRawAxis(5), .1) * .5;
+    //Set up arcade steer
+    double rightX = MathUtil.applyDeadband(driverController.getRawAxis(4), .1) * maxTurnSpeed.getDouble(0);
+    double rightY = -MathUtil.applyDeadband(driverController.getRawAxis(5), .1) * maxDriveSpeed.getDouble(0);
+    double leftSpeed = rightX + rightY;
+    double rightSpeed = -rightX + rightY;
 
-    leftSpeed.setDouble(leftForward);
-    rightSpeed.setDouble(rightForward);
+    if(Math.abs(leftSpeed) > 1.0){
+      rightSpeed /= leftSpeed  * ((rightSpeed < 0)?-1:1);
+      leftSpeed = 1.0  * ((rightSpeed < 0)?-1:1);
+    }
 
-    driveLeftFront.set(leftForward);
-    driveLeftBack.set(leftForward);
-    driveRightFront.set(rightForward);
-    driveRightBack.set(rightForward);
+    if(Math.abs(rightSpeed) > 1.0){
+      leftSpeed /= rightSpeed * ((rightSpeed < 0)?-1:1);
+      rightSpeed = 1.0  * ((rightSpeed < 0)?-1:1);
+    }
+
+    leftSpeedEntry.setDouble(leftSpeed);
+    rightSpeedEntry.setDouble(rightSpeed);
+
+    driveLeftFront.set(leftSpeed);
+    driveLeftBack.set(leftSpeed);
+    driveRightFront.set(rightSpeed);
+    driveRightBack.set(rightSpeed);
 
     //Intake controls
     if(driverController.getRawButton(6)){
