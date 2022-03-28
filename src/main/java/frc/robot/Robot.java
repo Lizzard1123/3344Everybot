@@ -22,6 +22,8 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
+import edu.wpi.first.cscore.VideoMode;
+import edu.wpi.first.cscore.VideoSource.ConnectionStrategy;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.Joystick;
@@ -46,6 +48,7 @@ public class Robot extends TimedRobot {
   VictorSPX intake = new VictorSPX(6); // neither has this one
 
   Joystick driverController = new Joystick(0);
+  Joystick shooterController = new Joystick(1);
 
   //Constants for controlling the arm. consider tuning these for your particular robot
   final double armHoldUp = 0.08;
@@ -70,7 +73,11 @@ public class Robot extends TimedRobot {
   NetworkTableEntry leftSpeedEntry;
   NetworkTableEntry rightSpeedEntry;
   NetworkTableEntry maxTurnSpeed;
-  NetworkTableEntry maxDriveSpeed;
+  NetworkTableEntry arcadeSeperated;
+
+  NetworkTableEntry driveNormal;
+  NetworkTableEntry driveRabbit;
+  NetworkTableEntry driveTurtle;
 
   UsbCamera camera = CameraServer.startAutomaticCapture();
   NetworkTableEntry cameraFeed;
@@ -83,6 +90,9 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    camera.setFPS(30);
+    camera.setResolution(480, 360);
+    camera.setConnectionStrategy(ConnectionStrategy.kAutoManage);
     //invert drivetrain from shuffleboard
     driveLeftFront.setInverted(false);
     driveLeftBack.setInverted(false);
@@ -113,23 +123,43 @@ public class Robot extends TimedRobot {
     .withSize(1, 1)
     .getEntry();
 
-    maxTurnSpeed = driveTab.add("maxTurnSpeed", .5)
+    maxTurnSpeed = driveTab.add("maxTurnSpeed", .15)
     .withPosition(1, 1)
     .withSize(2, 1)
     .withWidget(BuiltInWidgets.kNumberSlider)
     .withProperties(Map.of("Max", 1, "Min", 0))
     .getEntry();
 
-    maxDriveSpeed = driveTab.add("maxDriveSpeed", .5)
+    arcadeSeperated = driveTab.add("arcadeSeperated", true)
+    .withPosition(0, 3)
+    .withSize(1, 1)
+    .withWidget(BuiltInWidgets.kToggleButton)
+    .getEntry();
+
+    driveTab.add(camera)
+    .withPosition(5, 0)
+    .withSize(4, 4);
+
+    driveNormal = driveTab.add("driveNormal", .5)
     .withPosition(3, 1)
     .withSize(2, 1)
     .withWidget(BuiltInWidgets.kNumberSlider)
     .withProperties(Map.of("Max", 1, "Min", 0))
     .getEntry();
 
-    driveTab.add(camera)
-    .withPosition(5, 0)
-    .withSize(4, 4);
+    driveTurtle = driveTab.add("driveTurtle", .2)
+    .withPosition(3, 0)
+    .withSize(2, 1)
+    .withWidget(BuiltInWidgets.kNumberSlider)
+    .withProperties(Map.of("Max", 1, "Min", 0))
+    .getEntry();
+
+    driveRabbit = driveTab.add("driveRabbit", .75)
+    .withPosition(3, 2)
+    .withSize(2, 1)
+    .withWidget(BuiltInWidgets.kNumberSlider)
+    .withProperties(Map.of("Max", 1, "Min", 0))
+    .getEntry();
     
   }
 
@@ -166,16 +196,64 @@ public class Robot extends TimedRobot {
     double autoTimeElapsed = Timer.getFPGATimestamp() - autoStart;
     if(goForAuto){
       //series of timed events making up the flow of auto
-      if(autoTimeElapsed < 3){
+      if(autoTimeElapsed< 1){
         //spit out the ball for three seconds
         intake.set(ControlMode.PercentOutput, -1);
-      }else if(autoTimeElapsed < 6){
+      }else if(autoTimeElapsed < 2.5){
         //stop spitting out the ball and drive backwards *slowly* for three seconds
         intake.set(ControlMode.PercentOutput, 0);
         driveLeftFront.set(-0.3);
         driveLeftBack.set(-0.3);
         driveRightFront.set(-0.3);
         driveRightBack.set(-0.3);
+      }else if(autoTimeElapsed < 2.9){
+        //turn left
+        intake.set(ControlMode.PercentOutput, 0);
+        driveLeftFront.set(-0.1);
+        driveLeftBack.set(-0.1);
+        driveRightFront.set(0.1);
+        driveRightBack.set(0.1);}
+      }else if(autoTimeElapsed < 4){
+        //lower arm
+      armUp=false;
+      }else if(autoTimeElapsed < 4.5){
+        //drive forward and grab second ball
+        intake.set(ControlMode.PercentOutput, 1);
+        driveLeftFront.set(0.3);
+        driveLeftBack.set(0.3);
+        driveRightFront.set(0.3);
+        driveRightBack.set(0.3);
+      }else if(autoTimeElapsed < 5){
+        //back up
+        intake.set(ControlMode.PercentOutput, 0);
+        driveLeftFront.set(-0.3);
+        driveLeftBack.set(-0.3);
+        driveRightFront.set(-0.3);
+        driveRightBack.set(-0.3);
+      }else if(autoTimeElapsed <6){
+        //lower arm
+      armUp=true;
+      }else if(autoTimeElapsed < 6.4){
+        //turn right
+        intake.set(ControlMode.PercentOutput, 0);
+        driveLeftFront.set(0.1);
+        driveLeftBack.set(0.1);
+        driveRightFront.set(-0.1);
+        driveRightBack.set(-0.1);
+      }else if(autoTimeElapsed < 7.9){
+        //drive forward to hub
+        intake.set(ControlMode.PercentOutput, 0);
+        driveLeftFront.set(0.3);
+        driveLeftBack.set(0.3);
+        driveRightFront.set(0.3);
+        driveRightBack.set(0.3);
+      }else if(autoTimeElapsed < 9){
+        //spit second ball into hub
+        intake.set(ControlMode.PercentOutput, 0);
+        driveLeftFront.set(0.1);
+        driveLeftBack.set(0.1);
+        driveRightFront.set(0.1);
+        driveRightBack.set(0.1);
       }else{
         //do nothing for the rest of auto
         intake.set(ControlMode.PercentOutput, 0);
@@ -185,7 +263,7 @@ public class Robot extends TimedRobot {
         driveRightBack.set(0);
       }
     }
-  }
+  
 
   /** This function is called once when teleop is enabled. */
   @Override
@@ -196,10 +274,20 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     
     //Set up arcade steer
-    double rightX = MathUtil.applyDeadband(driverController.getRawAxis(4), .1) * maxTurnSpeed.getDouble(0);
-    double rightY = -MathUtil.applyDeadband(driverController.getRawAxis(5), .1) * maxDriveSpeed.getDouble(0);
+    double driveSpeed = 0.0;
+    if(driverController.getRawButton(6)){
+      driveSpeed = driveRabbit.getDouble(0.0);
+    } else if(driverController.getRawButton(5)){
+      driveSpeed = driveTurtle.getDouble(0.0);
+    } else {
+      driveSpeed = driveNormal.getDouble(0.0);
+    }
+    double rightX = MathUtil.applyDeadband(driverController.getRawAxis(arcadeSeperated.getBoolean(true)?0:4), .1) * maxTurnSpeed.getDouble(0);
+    double rightY = -MathUtil.applyDeadband(driverController.getRawAxis(5), .1) * driveSpeed;
     double leftSpeed = rightX + rightY;
     double rightSpeed = -rightX + rightY;
+
+
 
     if(Math.abs(leftSpeed) > 1.0){
       rightSpeed /= leftSpeed  * ((rightSpeed < 0)?-1:1);
@@ -220,15 +308,9 @@ public class Robot extends TimedRobot {
     driveRightBack.set(rightSpeed);
 
     //Intake controls
-    if(driverController.getRawButton(6)){
-      intake.set(VictorSPXControlMode.PercentOutput, 1);;
-    }
-    else if(driverController.getRawButton(5)){
-      intake.set(VictorSPXControlMode.PercentOutput, -1);
-    }
-    else{
-      intake.set(VictorSPXControlMode.PercentOutput, 0);
-    }
+    double intakeSpeed = shooterController.getRawAxis(3) - shooterController.getRawAxis(2);
+    intake.set(VictorSPXControlMode.PercentOutput, intakeSpeed);
+
 
     //Arm Controls
     if(armUp){
@@ -248,11 +330,11 @@ public class Robot extends TimedRobot {
       }
     }
   
-    if(driverController.getRawButtonPressed(4) && !armUp){
+    if(shooterController.getRawButtonPressed(4) && !armUp){
       lastBurstTime = Timer.getFPGATimestamp();
       armUp = true;
     }
-    else if(driverController.getRawButtonPressed(1) && armUp){
+    else if(shooterController.getRawButtonPressed(1) && armUp){
       lastBurstTime = Timer.getFPGATimestamp();
       armUp = false;
     }  
