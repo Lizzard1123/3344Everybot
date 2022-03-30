@@ -198,62 +198,87 @@ public class Robot extends TimedRobot {
       //series of timed events making up the flow of auto
       if(autoTimeElapsed< 1){
         //spit out the ball for three seconds
+        armUp=true;
         intake.set(ControlMode.PercentOutput, -1);
-      }else if(autoTimeElapsed < 2.5){
+        System.out.println("One");
+      }else if(autoTimeElapsed < 3.1){
         //stop spitting out the ball and drive backwards *slowly* for three seconds
         intake.set(ControlMode.PercentOutput, 0);
         driveLeftFront.set(-0.3);
         driveLeftBack.set(-0.3);
         driveRightFront.set(-0.3);
         driveRightBack.set(-0.3);
-      }else if(autoTimeElapsed < 2.9){
+        armUp=true;
+        System.out.println("Two");
+      }else if(autoTimeElapsed < 3.9){
         //turn left
         intake.set(ControlMode.PercentOutput, 0);
         driveLeftFront.set(-0.1);
         driveLeftBack.set(-0.1);
         driveRightFront.set(0.1);
-        driveRightBack.set(0.1);}
-      }else if(autoTimeElapsed < 4){
+        driveRightBack.set(0.1);
+        armUp=true;
+        System.out.println("Three");
+      }else if(autoTimeElapsed < 6.5){
         //lower arm
-      armUp=false;
-      }else if(autoTimeElapsed < 4.5){
+        armUp=false;
+        driveLeftFront.set(0);
+        driveLeftBack.set(0);
+        driveRightFront.set(0);
+        driveRightBack.set(0);
+        System.out.println("Four");
+      }else if(autoTimeElapsed < 7){
         //drive forward and grab second ball
         intake.set(ControlMode.PercentOutput, 1);
         driveLeftFront.set(0.3);
         driveLeftBack.set(0.3);
         driveRightFront.set(0.3);
         driveRightBack.set(0.3);
-      }else if(autoTimeElapsed < 5){
+        System.out.println("Five");
+      }else if(autoTimeElapsed < 7.5){
         //back up
         intake.set(ControlMode.PercentOutput, 0);
         driveLeftFront.set(-0.3);
         driveLeftBack.set(-0.3);
         driveRightFront.set(-0.3);
         driveRightBack.set(-0.3);
-      }else if(autoTimeElapsed <6){
-        //lower arm
+        System.out.println("Six");
+      }else if(autoTimeElapsed < 9.1
+      ){
+        //raise arm
       armUp=true;
-      }else if(autoTimeElapsed < 6.4){
+      System.out.println("Seven");
+      driveLeftFront.set(0);
+        driveLeftBack.set(0);
+        driveRightFront.set(0);
+        driveRightBack.set(0);
+      }else if(autoTimeElapsed < 9.9){
         //turn right
         intake.set(ControlMode.PercentOutput, 0);
         driveLeftFront.set(0.1);
         driveLeftBack.set(0.1);
         driveRightFront.set(-0.1);
         driveRightBack.set(-0.1);
-      }else if(autoTimeElapsed < 7.9){
+        armUp=true;
+        System.out.println("Eight");
+      }else if(autoTimeElapsed < 12.2){
         //drive forward to hub
         intake.set(ControlMode.PercentOutput, 0);
         driveLeftFront.set(0.3);
         driveLeftBack.set(0.3);
         driveRightFront.set(0.3);
         driveRightBack.set(0.3);
-      }else if(autoTimeElapsed < 9){
+        armUp=true;
+        System.out.println("Nine");
+      }else if(autoTimeElapsed < 13.9){
         //spit second ball into hub
-        intake.set(ControlMode.PercentOutput, 0);
+        intake.set(ControlMode.PercentOutput, -1);
         driveLeftFront.set(0.1);
         driveLeftBack.set(0.1);
         driveRightFront.set(0.1);
         driveRightBack.set(0.1);
+        armUp=true;
+        System.out.println("Ten");
       }else{
         //do nothing for the rest of auto
         intake.set(ControlMode.PercentOutput, 0);
@@ -261,8 +286,10 @@ public class Robot extends TimedRobot {
         driveLeftBack.set(0);
         driveRightFront.set(0);
         driveRightBack.set(0);
+        System.out.println("Eleven");
       }
     }
+  }
   
 
   /** This function is called once when teleop is enabled. */
